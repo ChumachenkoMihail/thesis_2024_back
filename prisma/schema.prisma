@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int                   @id @default(autoincrement())
+  login               String                @unique
+  password            String
+  firstName           String
+  lastName            String
+  position            String?
+  refreshToken        String?
+  createdAt           DateTime              @default(now())
+  Organization        Organization[]
+  OrganozationMembers OrganozationMembers[]
+  ProjectEnvironments ProjectEnvironments[]
+  BugsCreated         Bugs[]                @relation(name: "BugCreator")
+  BugsAssigned        Bugs[]                @relation(name: "BugAssignee")
+  NotificationsFrom   Notifications[]       @relation(name: "From")
+  NotificationsTo     Notifications[]       @relation(name: "To")
+  Projects            Projects[]
+  ProjectMembers      ProjectMembers[]
+  Comments            Comments[]
+
+  @@map("users")
+}
+
+model Organization {
+  id                  Int                   @id @default(autoincrement())
+  name                String                @unique
+  userId              Int
+  owner               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime              @default(now())
+  OrganozationMembers OrganozationMembers[]
+  Projects            Projects[]
+  Notifications       Notifications[]
+
+  @@map("ogranizations")
+}
+
+model OrganozationMembers {
+  id             Int          @id @default(autoincrement())
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("ogranization_members")
+}
+
+model Projects {
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  userId              Int
+  owner               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime              @default(now())
+  Organization        Organization?         @relation(fields: [organizationId], references: [id])
+  organizationId      Int?
+  ProjectMembers      ProjectMembers[]
+  Bugs                Bugs[]
+  ProjectEnvironments ProjectEnvironments[]
+
+  @@map("projects")
+}
+
+model ProjectEnvironments {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId Int
+  project   Projects @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  Bugs      Bugs[]
+
+  @@map("project_environments")
+}
+
+enum BugsStatuses {
+  BACKLOG
+  IN_PROGRESS
+  TODO
+  COMPLETED
+  QA
+}
+
+enum platformEnum {
+  DESKTOP
+  TABLET
+  MOBILE
+  EMBEDDED
+  WEB
+}
+
+model Bugs {
+  id              Int                  @id @default(autoincrement())
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @default(now())
+  creatorUserId   Int
+  creator         User                 @relation(name: "BugCreator", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  assigneeUserId  Int?
+  assignee        User?                @relation(name: "BugAssignee", fields: [assigneeUserId], references: [id], onDelete: Cascade)
+  status          BugsStatuses?
+  priority        Int?
+  platform        platformEnum?
+  testAsText      String?
+  codeAsText      String?
+  os              String?
+  realize         String?
+  name            String?
+  title           String
+  description     String?
+  environmentId   Int?
+  environment     ProjectEnvironments? @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  projectId       Int
+  project         Projects             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  BugsAttachments BugsAttachments[]
+  Notifications   Notifications[]
+  Comments        Comments[]
+
+  @@map("bugs")
+}
+
+enum BugAttachmentType {
+  CODE
+  TEST
+  OTHER
+}
+
+model BugsAttachments {
+  id             Int               @id @default(autoincrement())
+  bugId          Int
+  bug            Bugs              @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  attachmentName String
+  attachmentType BugAttachmentType
+
+  @@map("bugs_attachments")
+}
+
+enum NotificationsStatuses {
+  READ
+  UNREAD
+}
+
+enum NotificationsContent {
+  INVITE
+  TEXT
+}
+
+model Notifications {
+  id             Int                   @id @default(autoincrement())
+  createdAt      DateTime              @default(now())
+  text           String
+  status         NotificationsStatuses @default(UNREAD)
+  content        NotificationsContent  @default(TEXT)
+  valid          Boolean?              @default(true)
+  fromUserId     Int
+  from           User                  @relation(name: "From", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId       Int
+  to             User                  @relation(name: "To", fields: [toUserId], references: [id], onDelete: Cascade)
+  organizationId Int?
+  Organization   Organization?         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bugId          Int?
+  bug            Bugs?                 @relation(fields: [bugId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Comments {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  text        String
+  bugId       Int
+  bug         Bugs     @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdById Int
+
+  @@map("comments")
+}
+
+model ProjectMembers {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId Int
+  project   Projects @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_members")
+}
